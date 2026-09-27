@@ -12,9 +12,23 @@ on:
         description: 'Nome que aparece na TV ex: Transformers S01E06'
         required: true
       categoria:
-        description: 'Categoria ex: Filmes, Series, Marvel'
-        default: 'Filmes'
+        description: 'Categoria'
+        type: choice
+        options: [Filmes, Séries, Desenhos, Animes, Ação, Comédia, Terror, Infantil, Outra]
+        default: Filmes
         required: true
+      categoria_nova:
+        description: 'Se escolheu Outra, digite a nova categoria aqui'
+        required: false
+      genero:
+        description: 'Gênero'
+        type: choice
+        options: [Ação, Aventura, Comédia, Drama, Terror, Ficção, Romance, Suspense, Documentário, Outro]
+        default: Ação
+        required: true
+      genero_nova:
+        description: 'Se escolheu Outro, digite o novo gênero aqui'
+        required: false
       logo_url:
         description: 'Link da logo (opcional)'
         required: false
@@ -42,9 +56,19 @@ jobs:
         run: |
           FILE="minha-lista.m3u"
           if [ ! -f "$FILE" ]; then echo "#EXTM3U" > "$FILE"; fi
+
+          CAT="${{ inputs.categoria }}"
+          if [ "$CAT" = "Outra" ] && [ -n "${{ inputs.categoria_nova }}" ]; then CAT="${{ inputs.categoria_nova }}"; fi
+
+          GEN="${{ inputs.genero }}"
+          if [ "$GEN" = "Outro" ] && [ -n "${{ inputs.genero_nova }}" ]; then GEN="${{ inputs.genero_nova }}"; fi
+
+          GRUPO="$CAT"
+          if [ -n "$GEN" ]; then GRUPO="$CAT - $GEN"; fi
+
           LINK="https://github.com/XPLAYFILMES/minha-lista/releases/download/v1/${{ inputs.nome_arquivo }}"
           echo "" >> "$FILE"
-          echo "#EXTINF:-1 tvg-logo=\"${{ inputs.logo_url }}\" group-title=\"${{ inputs.categoria }}\",${{ inputs.nome_exibicao }}" >> "$FILE"
+          echo "#EXTINF:-1 tvg-logo=\"${{ inputs.logo_url }}\" group-title=\"$GRUPO\",${{ inputs.nome_exibicao }}" >> "$FILE"
           echo "$LINK" >> "$FILE"
 
       - name: Salvar lista no GitHub
@@ -52,5 +76,5 @@ jobs:
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add minha-lista.m3u
-          git commit -m "Add ${{ inputs.nome_exibicao }}" || echo "sem mudanca"
+          git commit -m "Add ${{ inputs.nome_exibicao }} [$CAT - $GEN]" || echo "sem mudanca"
           git push
