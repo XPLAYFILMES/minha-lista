@@ -11,3 +11,6 @@ https://pixeldrain.com/api/file/2xnJM9MF/video.mp4
 
 #EXTINF:-1 tvg-logo="http://image.tmdb.org/t/p/w227_and_h127_bestv2/afmnknzduOORLHDei3NxB0u8O8H.jpg" group-title="Filmes",Transformers S01E06
 https://github.com/XPLAYFILMES/minha-lista/releases/download/v1/Transformers-S01E06.mp4
+
+#EXTINF:-1 tvg-logo="" group-title="canais",rede tv
+https://github.com/XPLAYFILMES/minha-lista/releases/download/v1/tedetv.m3u
