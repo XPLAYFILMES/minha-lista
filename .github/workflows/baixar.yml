@@ -6,28 +6,26 @@ on:
         description: 'Link .mp4 de onde puxar'
         required: true
       nome_arquivo:
-        description: 'Como vai salvar no GitHub ex: Transformers-S01E06.mp4'
+        description: 'Como vai salvar ex: Filme.mp4 (SEM ESPACO)'
         required: true
       nome_exibicao:
-        description: 'Nome que aparece na TV ex: Transformers S01E06'
+        description: 'Nome na TV ex: Os Saqueadores (2021)'
         required: true
       categoria:
         description: 'Categoria'
         type: choice
         options: [Filmes, Séries, Desenhos, Animes, Ação, Comédia, Terror, Infantil, Outra]
         default: Filmes
-        required: true
       categoria_nova:
-        description: 'Se escolheu Outra, digite a nova categoria aqui'
+        description: 'Se Outra, digite aqui'
         required: false
       genero:
         description: 'Gênero'
         type: choice
         options: [Ação, Aventura, Comédia, Drama, Terror, Ficção, Romance, Suspense, Documentário, Outro]
         default: Ação
-        required: true
       genero_nova:
-        description: 'Se escolheu Outro, digite o novo gênero aqui'
+        description: 'Se Outro, digite aqui'
         required: false
       logo_url:
         description: 'Link da logo (opcional)'
@@ -41,10 +39,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Baixar video
         run: |
           curl -L -A "Mozilla/5.0" --referer "http://up.if87366.site/" -o "${{ inputs.nome_arquivo }}" "${{ inputs.url_do_video }}"
+          ls -lh "${{ inputs.nome_arquivo }}"
+          SIZE=$(stat -c%s "${{ inputs.nome_arquivo }}")
+          if [ $SIZE -lt 1000000 ]; then echo "ERRO: Link expirado ou bloqueado - arquivo tem so $SIZE bytes"; cat "${{ inputs.nome_arquivo }}"; exit 1; fi
 
       - name: Subir pro Release v1
         uses: softprops/action-gh-release@v2
@@ -56,25 +56,18 @@ jobs:
         run: |
           FILE="minha-lista.m3u"
           if [ ! -f "$FILE" ]; then echo "#EXTM3U" > "$FILE"; fi
-
-          CAT="${{ inputs.categoria }}"
-          if [ "$CAT" = "Outra" ] && [ -n "${{ inputs.categoria_nova }}" ]; then CAT="${{ inputs.categoria_nova }}"; fi
-
-          GEN="${{ inputs.genero }}"
-          if [ "$GEN" = "Outro" ] && [ -n "${{ inputs.genero_nova }}" ]; then GEN="${{ inputs.genero_nova }}"; fi
-
-          GRUPO="$CAT"
-          if [ -n "$GEN" ]; then GRUPO="$CAT - $GEN"; fi
-
+          CAT="${{ inputs.categoria }}"; if [ "$CAT" = "Outra" ] && [ -n "${{ inputs.categoria_nova }}" ]; then CAT="${{ inputs.categoria_nova }}"; fi
+          GEN="${{ inputs.genero }}"; if [ "$GEN" = "Outro" ] && [ -n "${{ inputs.genero_nova }}" ]; then GEN="${{ inputs.genero_nova }}"; fi
+          GRUPO="$CAT"; if [ -n "$GEN" ]; then GRUPO="$CAT - $GEN"; fi
           LINK="https://github.com/XPLAYFILMES/minha-lista/releases/download/v1/${{ inputs.nome_arquivo }}"
           echo "" >> "$FILE"
           echo "#EXTINF:-1 tvg-logo=\"${{ inputs.logo_url }}\" group-title=\"$GRUPO\",${{ inputs.nome_exibicao }}" >> "$FILE"
           echo "$LINK" >> "$FILE"
 
-      - name: Salvar lista no GitHub
+      - name: Salvar lista
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add minha-lista.m3u
-          git commit -m "Add ${{ inputs.nome_exibicao }} [$CAT - $GEN]" || echo "sem mudanca"
+          git commit -m "Add ${{ inputs.nome_exibicao }}" || true
           git push
