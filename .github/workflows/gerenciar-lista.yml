@@ -1,0 +1,126 @@
+name: Gerenciar Lista M3U
+on:
+  workflow_dispatch:
+    inputs:
+      acao:
+        description: 'O que quer fazer?'
+        type: choice
+        options: [adicionar_manual, editar, excluir]
+        default: adicionar_manual
+      nome_arquivo:
+        description: 'Nome EXATO que esta no Release ex: MeuFilme.mp4'
+        required: true
+      nome_exibicao:
+        description: 'Nome que aparece na TV ex: Os Saqueadores (2021)'
+        required: false
+      categoria:
+        description: 'Categoria'
+        type: choice
+        options: [Filmes, Séries, Desenhos, Animes, Ação, Comédia, Terror, Infantil, Outra]
+        default: Filmes
+      categoria_nova:
+        description: 'Se escolheu Outra, digite a nova categoria'
+        required: false
+      genero:
+        description: 'Gênero'
+        type: choice
+        options: [Ação, Aventura, Comédia, Drama, Terror, Ficção, Romance, Suspense, Documentário, Outro]
+        default: Ação
+      genero_nova:
+        description: 'Se escolheu Outro, digite novo genero'
+        required: false
+      logo_url:
+        description: 'Link da logo (opcional)'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  gerenciar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Organizar M3U
+        env:
+          ACAO: ${{ inputs.acao }}
+          ARQ: ${{ inputs.nome_arquivo }}
+          NOME: ${{ inputs.nome_exibicao }}
+          CAT: ${{ inputs.categoria }}
+          CATN: ${{ inputs.categoria_nova }}
+          GEN: ${{ inputs.genero }}
+          GENN: ${{ inputs.genero_nova }}
+          LOGO: ${{ inputs.logo_url }}
+        run: |
+          python3 << 'PY'
+          import os
+          file = "minha-lista.m3u"
+          if not os.path.exists(file):
+              open(file, 'w', encoding='utf-8').write("#EXTM3U\n")
+
+          acao = os.environ.get("ACAO")
+          arq = os.environ.get("ARQ").strip()
+          nome = os.environ.get("NOME").strip() or arq
+          cat = os.environ.get("CAT").strip()
+          catn = os.environ.get("CATN").strip()
+          gen = os.environ.get("GEN").strip()
+          genn = os.environ.get("GENN").strip()
+          logo = os.environ.get("LOGO").strip()
+
+          if cat == "Outra" and catn: cat = catn
+          if gen == "Outro" and genn: gen = genn
+          grupo = cat
+          if gen: grupo = f"{cat} - {gen}"
+
+          link = f"https://github.com/XPLAYFILMES/minha-lista/releases/download/v1/{arq}"
+          nova_linha = f'#EXTINF:-1 tvg-logo="{logo}" group-title="{grupo}",{nome}\n{link}\n'
+
+          with open(file, 'r', encoding='utf-8', errors='ignore') as f:
+              linhas = [l.rstrip('\n') for l in f]
+
+          # transforma em lista de blocos
+          header = []
+          blocos = []
+          i=0
+          if linhas and linhas[0].startswith("#EXTM3U"):
+              header = [linhas[0]]
+              i=1
+          while i < len(linhas):
+              if linhas[i].startswith("#EXTINF"):
+                  ext = linhas[i]
+                  url = linhas[i+1] if i+1 < len(linhas) else ""
+                  blocos.append((ext, url))
+                  i+=2
+              else:
+                  if linhas[i].strip(): header.append(linhas[i])
+                  i+=1
+
+          # filtra
+          novos_blocos = [b for b in blocos if arq not in b[1]]
+
+          if acao == "adicionar_manual" or acao == "editar":
+              # adiciona no final
+              ext, url = nova_linha.split('\n')[0], nova_linha.split('\n')[1]
+              novos_blocos.append((ext, url))
+              print(f"Adicionado/Editado: {nome} [{grupo}]")
+
+          if acao == "excluir":
+              print(f"Excluido: {arq}")
+
+          # reescreve
+          with open(file, 'w', encoding='utf-8') as f:
+              f.write("#EXTM3U\n")
+              for ext, url in novos_blocos:
+                  f.write(ext+"\n"+url+"\n")
+
+          print(open(file, encoding='utf-8').read()[-1000:])
+          PY
+
+      - name: Salvar lista
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add minha-lista.m3u
+          git commit -m "${{ inputs.acao }} ${{ inputs.nome_arquivo }}" || true
+          git push
