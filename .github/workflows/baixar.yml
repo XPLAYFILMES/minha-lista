@@ -1,15 +1,15 @@
-name: Baixar link e subir pro Release
+name: Baixar link privado e subir pro Release
 on:
   workflow_dispatch:
     inputs:
       url_do_video:
-        description: 'Link NOVO .mp4 (pega na hora)'
+        description: 'Link ATIVO do seu servidor privado'
         required: true
       nome_arquivo:
-        description: 'Como vai salvar ex: Filme.mp4 SEM ESPACO'
+        description: 'Ex: Filme.mp4 SEM ESPACO'
         required: true
       nome_exibicao:
-        description: 'Nome na TV ex: Os Saqueadores (2021)'
+        description: 'Nome na TV'
         required: true
       categoria:
         description: 'Categoria'
@@ -17,7 +17,7 @@ on:
         options: [Filmes, Séries, Desenhos, Animes, Ação, Comédia, Terror, Infantil, Outra]
         default: Filmes
       categoria_nova:
-        description: 'Se Outra, digite a nova'
+        description: 'Se Outra, digite aqui'
         required: false
       genero:
         description: 'Gênero'
@@ -25,11 +25,15 @@ on:
         options: [Ação, Aventura, Comédia, Drama, Terror, Ficção, Romance, Suspense, Documentário, Outro]
         default: Ação
       genero_nova:
-        description: 'Se Outro, digite o novo'
+        description: 'Se Outro, digite aqui'
         required: false
       logo_url:
-        description: 'Link da logo (opcional)'
+        description: 'Logo opcional'
         required: false
+      referer:
+        description: 'Referer do seu servidor - cola o que copiou do DevTools'
+        default: 'https://up.if87366.site/'
+        required: true
 
 permissions:
   contents: write
@@ -38,25 +42,17 @@ jobs:
   baixar-e-subir:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
-      - name: Instalar ferramentas
+      - name: Baixar do privado
         run: |
-          sudo apt-get update && sudo apt-get install -y ffmpeg
-          pip install yt-dlp
-
-      - name: Baixar VIDEO REAL
-        run: |
-          rm -f "${{ inputs.nome_arquivo }}"
-          # tenta 3 formas: yt-dlp, curl com referer, curl puro
-          yt-dlp -o "${{ inputs.nome_arquivo }}" --no-playlist --merge-output-format mp4 "${{ inputs.url_do_video }}" || \
-          curl -L -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" --referer "https://up.if87366.site/" -o "${{ inputs.nome_arquivo }}" "${{ inputs.url_do_video }}" || \
-          curl -L -A "Mozilla/5.0" -o "${{ inputs.nome_arquivo }}" "${{ inputs.url_do_video }}"
-          
+          echo "Baixando de: ${{ inputs.url_do_video }}"
+          echo "Usando Referer: ${{ inputs.referer }}"
+          curl -L -v -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" --referer "${{ inputs.referer }}" -H "Origin: ${{ inputs.referer }}" -o "${{ inputs.nome_arquivo }}" "${{ inputs.url_do_video }}" 2>&1 | head -n 100
           ls -lh "${{ inputs.nome_arquivo }}"
           SIZE=$(stat -c%s "${{ inputs.nome_arquivo }}")
-          echo "Tamanho baixado: $SIZE bytes"
-          if [ $SIZE -lt 1000000 ]; then echo "LINK EXPIROU - pega um link novo"; cat "${{ inputs.nome_arquivo }}"; exit 1; fi
+          echo "Tamanho: $SIZE"
+          if [ $SIZE -lt 1000000 ]; then echo "BLOQUEADO PELO SERVIDOR PRIVADO - Conteudo:"; cat "${{ inputs.nome_arquivo }}"; exit 1; fi
 
       - name: Subir pro Release v1
         uses: softprops/action-gh-release@v2
