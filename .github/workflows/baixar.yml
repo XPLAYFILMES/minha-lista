@@ -1,20 +1,32 @@
-name: Baixar link e subir pro Release
+name: Baixar e Organizar na Lista
 on:
   workflow_dispatch:
     inputs:
       url_do_video:
-        description: 'Link .mp4 de onde puxar'
+        description: 'Link .mp4, m3u8, kingplus, etc'
         required: true
       nome_arquivo:
-        description: 'Como vai salvar no GitHub ex: Transformers-S01E06.mp4'
+        description: 'Nome pra salvar SEM ESPACO ex: Filme.mp4'
         required: true
       nome_exibicao:
-        description: 'Nome que aparece na TV ex: Transformers S01E06'
+        description: 'Nome que aparece na TV ex: Os Saqueadores (2021)'
         required: true
       categoria:
-        description: 'Categoria ex: Filmes, Series, Marvel'
-        default: 'Filmes'
-        required: true
+        description: 'Categoria'
+        type: choice
+        options: [Filmes, Séries, Desenhos, Animes, Ação, Comédia, Terror, Infantil, Outra]
+        default: Filmes
+      categoria_nova:
+        description: 'Se escolheu Outra, digite a nova categoria aqui'
+        required: false
+      genero:
+        description: 'Gênero'
+        type: choice
+        options: [Ação, Aventura, Comédia, Drama, Terror, Ficção, Romance, Suspense, Documentário, Outro]
+        default: Ação
+      genero_novo:
+        description: 'Se escolheu Outro, digite o novo gênero'
+        required: false
       logo_url:
         description: 'Link da logo (opcional)'
         required: false
@@ -28,9 +40,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Instalar ferramentas
+        run: |
+          sudo apt-get update && sudo apt-get install -y ffmpeg
+          pip install yt-dlp
+
       - name: Baixar video
         run: |
+          rm -f "${{ inputs.nome_arquivo }}"
+          yt-dlp -o "${{ inputs.nome_arquivo }}" --merge-output-format mp4 "${{ inputs.url_do_video }}" || \
           curl -L -A "Mozilla/5.0" --referer "http://up.if87366.site/" -o "${{ inputs.nome_arquivo }}" "${{ inputs.url_do_video }}"
+          ls -lh "${{ inputs.nome_arquivo }}"
+          # se vier com menos de 1MB é erro, falha o workflow
+          SIZE=$(stat -c%s "${{ inputs.nome_arquivo }}")
+          if [ $SIZE -lt 1000000 ]; then echo "Download falhou, arquivo muito pequeno"; cat "${{ inputs.nome_arquivo }}"; exit 1; fi
 
       - name: Subir pro Release v1
         uses: softprops/action-gh-release@v2
@@ -38,19 +61,31 @@ jobs:
           tag_name: v1
           files: ${{ inputs.nome_arquivo }}
 
-      - name: Adicionar automatico na lista M3U
+      - name: Salvar na lista com categoria e genero
         run: |
           FILE="minha-lista.m3u"
           if [ ! -f "$FILE" ]; then echo "#EXTM3U" > "$FILE"; fi
-          LINK="https://github.com/XPLAYFILMES/minha-lista/releases/download/v1/${{ inputs.nome_arquivo }}"
-          echo "" >> "$FILE"
-          echo "#EXTINF:-1 tvg-logo=\"${{ inputs.logo_url }}\" group-title=\"${{ inputs.categoria }}\",${{ inputs.nome_exibicao }}" >> "$FILE"
-          echo "$LINK" >> "$FILE"
 
-      - name: Salvar lista no GitHub
+          CAT="${{ inputs.categoria }}"
+          if [ "$CAT" = "Outra" ] && [ -n "${{ inputs.categoria_nova }}" ]; then CAT="${{ inputs.categoria_nova }}"; fi
+
+          GEN="${{ inputs.genero }}"
+          if [ "$GEN" = "Outro" ] && [ -n "${{ inputs.genero_novo }}" ]; then GEN="${{ inputs.genero_novo }}"; fi
+
+          GRUPO="$CAT"
+          if [ -n "$GEN" ]; then GRUPO="$CAT - $GEN"; fi
+
+          LINK="https://github.com/XPLAYFILMES/minha-lista/releases/download/v1/${{ inputs.nome_arquivo }}"
+          
+          echo "" >> "$FILE"
+          echo "#EXTINF:-1 tvg-logo=\"${{ inputs.logo_url }}\" group-title=\"$GRUPO\",${{ inputs.nome_exibicao }}" >> "$FILE"
+          echo "$LINK" >> "$FILE"
+          cat "$FILE"
+
+      - name: Commit lista automatico
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add minha-lista.m3u
-          git commit -m "Add ${{ inputs.nome_exibicao }}" || echo "sem mudanca"
+          git commit -m "Add ${{ inputs.nome_exibicao }} [$CAT - $GEN]" || echo "nada novo"
           git push
