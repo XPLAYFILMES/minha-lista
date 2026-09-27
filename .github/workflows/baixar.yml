@@ -3,11 +3,21 @@ on:
   workflow_dispatch:
     inputs:
       url_do_video:
-        description: 'Cole o link do video .mp4'
+        description: 'Link .mp4 de onde puxar'
         required: true
       nome_arquivo:
-        description: 'Nome SEM ESPACO ex: episodio.mp4'
+        description: 'Como vai salvar no GitHub ex: Transformers-S01E06.mp4'
         required: true
+      nome_exibicao:
+        description: 'Nome que aparece na TV ex: Transformers S01E06'
+        required: true
+      categoria:
+        description: 'Categoria ex: Filmes, Series, Marvel'
+        default: 'Filmes'
+        required: true
+      logo_url:
+        description: 'Link da logo (opcional)'
+        required: false
 
 permissions:
   contents: write
@@ -16,6 +26,8 @@ jobs:
   baixar-e-subir:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Baixar video
         run: |
           curl -L -A "Mozilla/5.0" --referer "http://up.if87366.site/" -o "${{ inputs.nome_arquivo }}" "${{ inputs.url_do_video }}"
@@ -25,3 +37,20 @@ jobs:
         with:
           tag_name: v1
           files: ${{ inputs.nome_arquivo }}
+
+      - name: Adicionar automatico na lista M3U
+        run: |
+          FILE="minha-lista.m3u"
+          if [ ! -f "$FILE" ]; then echo "#EXTM3U" > "$FILE"; fi
+          LINK="https://github.com/XPLAYFILMES/minha-lista/releases/download/v1/${{ inputs.nome_arquivo }}"
+          echo "" >> "$FILE"
+          echo "#EXTINF:-1 tvg-logo=\"${{ inputs.logo_url }}\" group-title=\"${{ inputs.categoria }}\",${{ inputs.nome_exibicao }}" >> "$FILE"
+          echo "$LINK" >> "$FILE"
+
+      - name: Salvar lista no GitHub
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add minha-lista.m3u
+          git commit -m "Add ${{ inputs.nome_exibicao }}" || echo "sem mudanca"
+          git push
