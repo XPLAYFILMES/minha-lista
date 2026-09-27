@@ -3,21 +3,11 @@ on:
   workflow_dispatch:
     inputs:
       url_do_video:
-        description: 'Link .mp4 de onde puxar'
+        description: 'Link do video (mp4, m3u8, kingplus, etc)'
         required: true
       nome_arquivo:
-        description: 'Como vai salvar no GitHub ex: Transformers-S01E06.mp4'
+        description: 'Nome final SEM ESPACO ex: Filme.mp4'
         required: true
-      nome_exibicao:
-        description: 'Nome que aparece na TV ex: Transformers S01E06'
-        required: true
-      categoria:
-        description: 'Categoria ex: Filmes, Series, Marvel'
-        default: 'Filmes'
-        required: true
-      logo_url:
-        description: 'Link da logo (opcional)'
-        required: false
 
 permissions:
   contents: write
@@ -28,29 +18,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Baixar video
+      - name: Instalar ferramentas
         run: |
+          sudo apt-get update && sudo apt-get install -y ffmpeg
+          pip install yt-dlp
+
+      - name: Baixar video (qualquer site)
+        run: |
+          # tenta com yt-dlp primeiro (funciona pra kingplus, m3u8, etc)
+          yt-dlp -o "${{ inputs.nome_arquivo }}" --no-playlist --merge-output-format mp4 "${{ inputs.url_do_video }}" || \
+          # se falhar, tenta com curl igual antes
           curl -L -A "Mozilla/5.0" --referer "http://up.if87366.site/" -o "${{ inputs.nome_arquivo }}" "${{ inputs.url_do_video }}"
+          ls -lh "${{ inputs.nome_arquivo }}"
 
       - name: Subir pro Release v1
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1
           files: ${{ inputs.nome_arquivo }}
-
-      - name: Adicionar automatico na lista M3U
-        run: |
-          FILE="minha-lista.m3u"
-          if [ ! -f "$FILE" ]; then echo "#EXTM3U" > "$FILE"; fi
-          LINK="https://github.com/XPLAYFILMES/minha-lista/releases/download/v1/${{ inputs.nome_arquivo }}"
-          echo "" >> "$FILE"
-          echo "#EXTINF:-1 tvg-logo=\"${{ inputs.logo_url }}\" group-title=\"${{ inputs.categoria }}\",${{ inputs.nome_exibicao }}" >> "$FILE"
-          echo "$LINK" >> "$FILE"
-
-      - name: Salvar lista no GitHub
-        run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add minha-lista.m3u
-          git commit -m "Add ${{ inputs.nome_exibicao }}" || echo "sem mudanca"
-          git push
