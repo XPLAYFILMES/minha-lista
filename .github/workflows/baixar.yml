@@ -6,7 +6,7 @@ on:
         description: 'Cole o link do video .mp4'
         required: true
       nome_arquivo:
-        description: 'Nome que vai ficar ex: Os.Saqueadores.mp4'
+        description: 'Nome SEM ESPAÇO ex: episodio.mp4'
         required: true
 
 jobs:
@@ -14,7 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Baixar video
-        run: wget -O "${{ inputs.nome_arquivo }}" "${{ inputs.url_do_video }}"
+        run: |
+          curl -L -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" --referer "http://up.if87366.site/" -o "${{ inputs.nome_arquivo }}" "${{ inputs.url_do_video }}"
 
       - name: Subir pro Release v1
         uses: softprops/action-gh-release@v1
