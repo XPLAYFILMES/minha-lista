@@ -6,8 +6,11 @@ on:
         description: 'Cole o link do video .mp4'
         required: true
       nome_arquivo:
-        description: 'Nome SEM ESPAÇO ex: episodio.mp4'
+        description: 'Nome SEM ESPACO ex: episodio.mp4'
         required: true
+
+permissions:
+  contents: write
 
 jobs:
   baixar-e-subir:
@@ -15,10 +18,10 @@ jobs:
     steps:
       - name: Baixar video
         run: |
-          curl -L -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" --referer "http://up.if87366.site/" -o "${{ inputs.nome_arquivo }}" "${{ inputs.url_do_video }}"
+          curl -L -A "Mozilla/5.0" --referer "http://up.if87366.site/" -o "${{ inputs.nome_arquivo }}" "${{ inputs.url_do_video }}"
 
       - name: Subir pro Release v1
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: v1
           files: ${{ inputs.nome_arquivo }}
