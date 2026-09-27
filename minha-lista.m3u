@@ -17,3 +17,6 @@ https://github.com/XPLAYFILMES/minha-lista/releases/download/v1/tedetv.m3u
 
 #EXTINF:-1 tvg-logo="" group-title="Filmes",roda de fogo
 https://github.com/XPLAYFILMES/minha-lista/releases/download/v1/roda-de-fogo
+
+#EXTINF:-1 tvg-logo="" group-title="Filmes",007
+https://github.com/XPLAYFILMES/minha-lista/releases/download/v1/tete01.mp4
